@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and statistics",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "pin": { "type": "string" },
+        "points": { "type": "number" },
+        "level": { "type": "number" },
+        "provider": { "type": "string" },
+        "apiKey": { "type": "string" },
+        "favorites": { "type": "array", "items": { "type": "string" } },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "mostBetTeam": { "type": "string" },
+            "bestTeam": { "type": "string" },
+            "worstTeam": { "type": "string" },
+            "mostBetLeague": { "type": "string" },
+            "totalStaked": { "type": "number" },
+            "totalWon": { "type": "number" },
+            "yield": { "type": "number" }
+          }
+        },
+        "achievements": { "type": "array", "items": { "type": "string" } },
+        "weeklyPoints": { "type": "number" },
+        "weeklyHits": { "type": "number" },
+        "weeklyPredictions": { "type": "number" }
+      },
+      "required": ["username", "pin", "points", "level"]
+    },
+    "Bet": {
+      "title": "Bet",
+      "description": "A betting slip",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "matchId": { "type": "string" },
+              "homeTeam": { "type": "string" },
+              "awayTeam": { "type": "string" },
+              "league": { "type": "string" },
+              "selection": { "type": "string", "enum": ["1", "X", "2"] },
+              "odds": { "type": "number" },
+              "startTime": { "type": "string" }
+            }
+          }
+        },
+        "stake": { "type": "number" },
+        "totalOdds": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["CREATED", "LOCKED", "IN_PROGRESS", "WAITING_RESULT", "PENDING_API_RETRY", "WON", "LOST", "CANCELED", "LIQUIDATED"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resultDate": { "type": "string", "format": "date-time" },
+        "providerUsed": { "type": "string" }
+      },
+      "required": ["userId", "selections", "stake", "totalOdds", "status"]
+    },
+    "Ranking": {
+      "title": "Ranking",
+      "description": "Global and weekly rankings",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["points", "yield", "weekly", "previous_weekly"] },
+        "data": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/bets/{betId}": {
+      "schema": "Bet",
+      "description": "Betting slips"
+    },
+    "/rankings/{rankingId}": {
+      "schema": "Ranking",
+      "description": "Rankings data"
+    }
+  }
+}
