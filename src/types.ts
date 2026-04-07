@@ -48,8 +48,10 @@ export interface UserStats {
 }
 
 export interface UserProfile {
-  uid: string;
+  uid: string; // This will be the nickname for document ID
+  authUid: string; // The Firebase Anonymous UID for security rules
   username: string;
+  pin: string; // 4-digit PIN
   photoURL?: string;
   email: string;
   points: number; // Current balance (used for betting)
