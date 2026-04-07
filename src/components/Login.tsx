@@ -1,23 +1,42 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Info, ShieldCheck } from 'lucide-react';
+import { Info, ShieldCheck, User, Lock, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Login() {
-  const { signInWithGoogle } = useAuth();
+  const { login, register } = useAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [nickname, setNickname] = useState('');
+  const [pin, setPin] = useState('');
   const [showInfo, setShowInfo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nickname.trim() || pin.length !== 4) {
+      setError('Introduce un nick y un PIN de 4 dígitos');
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
     try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error(error);
-      alert('Error al iniciar sesión con Google');
+      if (isRegistering) {
+        await register(nickname.trim(), pin);
+      } else {
+        await login(nickname.trim(), pin);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al conectar');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setPin(value);
   };
 
   return (
@@ -32,24 +51,69 @@ export default function Login() {
             Ficti<span className="text-[#ff6321]">BET</span>
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium uppercase tracking-widest">
-            Apuestas de Fútbol Pro
+            {isRegistering ? 'Crear nueva cuenta' : 'Acceso de Jugadores'}
           </p>
         </div>
 
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+              <input 
+                type="text"
+                placeholder="Nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#ff6321] transition-all font-bold"
+                required
+              />
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+              <input 
+                type="password"
+                inputMode="numeric"
+                placeholder="PIN de 4 dígitos"
+                value={pin}
+                onChange={handlePinChange}
+                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#ff6321] transition-all font-mono text-xl tracking-[0.5em]"
+                required
+              />
+            </div>
+          </div>
+
+          {error && (
+            <motion.p 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-red-500 text-xs font-bold text-center"
+            >
+              {error}
+            </motion.p>
+          )}
+
           <button
-            onClick={handleGoogleSignIn}
+            type="submit"
             disabled={isLoading}
-            className="w-full bg-zinc-900 dark:bg-white text-white dark:text-black font-bold py-4 rounded-xl transition-all transform active:scale-95 shadow-lg flex items-center justify-center gap-3 disabled:opacity-50"
+            className="w-full bg-[#ff6321] hover:bg-[#e55a1e] text-white font-black py-4 rounded-xl transition-all transform active:scale-95 shadow-lg shadow-[#ff6321]/20 flex items-center justify-center gap-3 disabled:opacity-50 uppercase tracking-widest"
           >
-            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            {isLoading ? 'CONECTANDO...' : 'ENTRAR CON GOOGLE'}
+            {isLoading ? 'CONECTANDO...' : (isRegistering ? 'REGISTRARSE' : 'ENTRAR')}
+            {!isLoading && <ArrowRight className="w-5 h-5" />}
           </button>
           
-          <p className="text-center text-zinc-500 dark:text-zinc-500 text-xs px-4">
-            Al entrar, aceptas nuestras normas de juego limpio y el uso de datos ficticios.
-          </p>
-        </div>
+          <div className="text-center">
+            <button 
+              type="button"
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError(null);
+              }}
+              className="text-zinc-500 hover:text-[#ff6321] text-xs font-bold transition-colors uppercase tracking-widest"
+            >
+              {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿Eres nuevo? Crea tu cuenta'}
+            </button>
+          </div>
+        </form>
 
         <div className="flex items-center justify-center pt-4 border-t border-zinc-100 dark:border-white/5">
           <button 

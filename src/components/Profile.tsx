@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db, auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { deleteUser } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { PROVIDERS } from '../services/api';
 import { Bet, Selection } from '../types';
@@ -30,7 +31,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Profile({ setView }: { setView: (v: string) => void }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [username, setUsername] = useState(user?.username || '');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [provider, setProvider] = useState(user?.provider || '');
@@ -196,32 +197,38 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user || !auth.currentUser) return;
+    console.log('Iniciando eliminación de cuenta...');
+    if (!user) {
+      console.log('No hay usuario autenticado o perfil cargado.');
+      return;
+    }
+    
     setIsDeletingAccount(true);
     try {
       // 1. Delete all bets
+      console.log('Buscando apuestas para eliminar...');
       const betsQuery = query(collection(db, 'bets'), where('userId', '==', user.uid));
       const betsSnapshot = await getDocs(betsQuery);
       const batch = writeBatch(db);
+      
+      console.log(`Eliminando ${betsSnapshot.docs.length} apuestas...`);
       betsSnapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
       });
       
       // 2. Delete user document
+      console.log('Eliminando documento de usuario de Firestore...');
       batch.delete(doc(db, 'users', user.uid));
       await batch.commit();
+      console.log('Firestore limpiado correctamente.');
 
-      // 3. Delete auth account
-      await auth.currentUser.delete();
+      // 3. Logout and clear local storage
+      await logout();
       
       alert('Cuenta eliminada permanentemente. ¡Gracias por jugar!');
     } catch (error: any) {
-      console.error('Error deleting account:', error);
-      if (error.code === 'auth/requires-recent-login') {
-        alert('Por seguridad, debes haber iniciado sesión recientemente para eliminar tu cuenta. Por favor, cierra sesión e inicia sesión de nuevo antes de intentarlo.');
-      } else {
-        alert('Error al eliminar la cuenta. Por favor, inténtalo de nuevo más tarde.');
-      }
+      console.error('Error al eliminar la cuenta:', error);
+      alert(`Error al eliminar la cuenta: ${error.message || 'Error desconocido'}`);
     } finally {
       setIsDeletingAccount(false);
     }
