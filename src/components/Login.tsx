@@ -12,10 +12,10 @@ export default function Login() {
     setIsLoading(true);
     try {
       await signInWithGoogle();
-    } catch (error) {
-      console.error(error);
-      alert('Error al iniciar sesión con Google');
-    } finally {
+    } catch (error: any) {
+  console.error('Firebase Auth Error:', error);
+  alert(`Error: ${error.code}\n\n${error.message}`);
+} finally {
       setIsLoading(false);
     }
   };
