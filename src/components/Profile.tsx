@@ -31,7 +31,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Profile({ setView }: { setView: (v: string) => void }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [username, setUsername] = useState(user?.username || '');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [provider, setProvider] = useState(user?.provider || '');
@@ -198,7 +198,7 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
 
   const handleDeleteAccount = async () => {
     console.log('Iniciando eliminación de cuenta...');
-    if (!user) {
+    if (!user || !auth.currentUser) {
       console.log('No hay usuario autenticado o perfil cargado.');
       return;
     }
@@ -222,13 +222,19 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
       await batch.commit();
       console.log('Firestore limpiado correctamente.');
 
-      // 3. Logout and clear local storage
-      await logout();
+      // 3. Delete auth account
+      console.log('Eliminando cuenta de Firebase Auth...');
+      await deleteUser(auth.currentUser);
+      console.log('Cuenta eliminada de Firebase Auth.');
       
       alert('Cuenta eliminada permanentemente. ¡Gracias por jugar!');
     } catch (error: any) {
       console.error('Error al eliminar la cuenta:', error);
-      alert(`Error al eliminar la cuenta: ${error.message || 'Error desconocido'}`);
+      if (error.code === 'auth/requires-recent-login') {
+        alert('Por seguridad, debes haber iniciado sesión recientemente para eliminar tu cuenta. Por favor, cierra sesión e inicia sesión de nuevo antes de intentarlo.');
+      } else {
+        alert(`Error al eliminar la cuenta: ${error.message || 'Error desconocido'}`);
+      }
     } finally {
       setIsDeletingAccount(false);
     }
