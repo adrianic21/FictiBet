@@ -12,42 +12,35 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['username', 'points', 'level', 'pin', 'authUid']) &&
+      return data.keys().hasAll(['username', 'points', 'level']) &&
              data.username is string && data.username.size() >= 1 &&
-             data.pin is string && data.pin.size() == 4 &&
-             data.authUid is string &&
              data.points is number &&
              data.level is number;
     }
 
     function isValidBet(data) {
       return data.keys().hasAll(['userId', 'selections', 'stake', 'totalOdds', 'status']) &&
-             data.userId is string &&
+             data.userId == request.auth.uid &&
              data.stake is number && data.stake > 0 &&
-             data.status in ['CREATED', 'LOCKED', 'CANCELED', 'WON', 'LOST', 'LIQUIDATED'];
+             data.status in ['CREATED', 'LOCKED', 'CANCELED'];
     }
 
-    match /users/{nickname} {
-      // Allow reading to check PIN during login
+    match /users/{userId} {
       allow read: if isAuthenticated();
-      // Allow creation if nickname doesn't exist
-      allow create: if isAuthenticated() && !exists(/databases/$(database)/documents/users/$(nickname)) && isValidUser(request.resource.data);
-      // Allow update if the authUid matches (same session) or if the PIN is provided correctly in the request (re-auth)
-      allow update: if isAuthenticated() && (
-        resource.data.authUid == request.auth.uid || 
-        (request.resource.data.pin == resource.data.pin && request.resource.data.authUid == request.auth.uid)
-      );
-      // Allow deletion if owner
-      allow delete: if isAuthenticated() && resource.data.authUid == request.auth.uid;
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
     }
 
     match /bets/{betId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidBet(request.resource.data); 
+      allow create: if isAuthenticated() && isValidBet(request.resource.data);
       allow update: if isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(resource.data.userId)).data.authUid == request.auth.uid
+        request.auth.uid == resource.data.userId && 
+        (request.resource.data.status == 'CANCELED' || request.resource.data.status == 'LOCKED')
       );
-      allow delete: if isAuthenticated() && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.authUid == request.auth.uid;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      // Admin/Server logic will handle other status transitions
     }
 
     match /rankings/{rankingId} {
