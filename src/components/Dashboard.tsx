@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Star, 
-  Clock, 
-  Filter,
+import {
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Clock,
   Search,
   AlertCircle,
   RefreshCw
@@ -14,8 +13,8 @@ import { Match, Selection } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProvider } from '../services/api';
 
-export default function Dashboard({ onAddToSlip, setView, selections }: { 
-  onAddToSlip: (selection: Selection) => void, 
+export default function Dashboard({ onAddToSlip, setView, selections }: {
+  onAddToSlip: (selection: Selection) => void,
   setView: (view: string) => void,
   selections: Selection[]
 }) {
@@ -33,8 +32,13 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
   const toggleFavorite = (e: React.MouseEvent, league: string) => {
     e.stopPropagation();
     setFavoriteLeagues(prev => {
-      const next = prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league];
+      const isFav = prev.includes(league);
+      const next = isFav ? prev.filter(l => l !== league) : [...prev, league];
       localStorage.setItem('favoriteLeagues', JSON.stringify(next));
+      // Auto-expand when favorited
+      if (!isFav) {
+        setExpandedLeagues(exp => exp.includes(league) ? exp : [...exp, league]);
+      }
       return next;
     });
   };
@@ -43,7 +47,7 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
     if (!user?.apiKey) return;
     setLoading(true);
     try {
-      const provider = getProvider(user.provider || 'API-Football', user.apiKey);
+      const provider = getProvider('API-Football', user.apiKey);
       const realMatches = await provider.getMatches();
       setMatches(realMatches);
     } catch (error) {
@@ -51,36 +55,41 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
     } finally {
       setLoading(false);
     }
-  }, [user?.apiKey, user?.provider]);
+  }, [user?.apiKey]);
 
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
 
+  // Auto-expand favorite leagues when matches load
+  useEffect(() => {
+    if (matches.length > 0 && favoriteLeagues.length > 0) {
+      setExpandedLeagues(prev => {
+        const toAdd = favoriteLeagues.filter(l => !prev.includes(l));
+        return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+      });
+    }
+  }, [matches]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredMatches = matches.filter(match => {
     const matchTime = new Date(match.startTime).getTime();
     const now = Date.now();
-    
-    // Only show matches that haven't started
+
     if (matchTime <= now) return false;
 
-    // Search filter
     const searchLower = search.toLowerCase();
-    const matchesSearch = match.homeTeam.toLowerCase().includes(searchLower) || 
-                         match.awayTeam.toLowerCase().includes(searchLower) || 
-                         match.league.toLowerCase().includes(searchLower);
+    const matchesSearch = match.homeTeam.toLowerCase().includes(searchLower) ||
+      match.awayTeam.toLowerCase().includes(searchLower) ||
+      match.league.toLowerCase().includes(searchLower);
     if (!matchesSearch) return false;
 
-    // Time filter
     if (filter === 'all') return true;
-    
-    const diffMs = matchTime - now;
-    const diffMins = diffMs / (1000 * 60);
-    
+
+    const diffMins = (matchTime - now) / (1000 * 60);
     if (filter === '30m') return diffMins <= 30;
     if (filter === '1h') return diffMins <= 60;
     if (filter === '3h') return diffMins <= 180;
-    
+
     return true;
   });
 
@@ -91,9 +100,9 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
     if (!aFav && bFav) return 1;
     return a.localeCompare(b);
   });
-  
+
   const toggleLeague = (league: string) => {
-    setExpandedLeagues(prev => 
+    setExpandedLeagues(prev =>
       prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]
     );
   };
@@ -107,10 +116,10 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold">Configuración Requerida</h2>
           <p className="text-zinc-500 dark:text-zinc-400 max-w-sm">
-            Para ver partidos reales y cuotas actualizadas, debes configurar tu API Key en tu perfil.
+            Para ver partidos reales necesitas configurar tu API Key de API-Football en tu perfil.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => setView('profile')}
           className="bg-[#ff6321] px-8 py-3 rounded-xl font-bold hover:bg-[#e55a1e] text-white transition-colors"
         >
@@ -121,55 +130,53 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & Filters */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
-          <input 
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
             type="text"
             placeholder="Buscar equipo o liga..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:border-[#ff6321] dark:text-white"
+            className="w-full bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#ff6321] dark:text-white transition-colors"
           />
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-          <button 
-            onClick={() => {
-              setMatches([]); // Clear matches to show loading state clearly
-              fetchMatches();
-            }}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+          <button
+            onClick={() => { setMatches([]); fetchMatches(); }}
             disabled={loading}
-            className="p-3 bg-zinc-100 dark:bg-white/5 rounded-xl hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors disabled:opacity-50 group"
+            className="p-2.5 bg-zinc-100 dark:bg-white/5 rounded-xl hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors disabled:opacity-50 shrink-0"
             title="Recargar partidos"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : 'group-active:rotate-180 transition-transform'} text-zinc-600 dark:text-zinc-400`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''} text-zinc-600 dark:text-zinc-400`} />
           </button>
-          <FilterButton active={filter === 'all'} onClick={() => setFilter('all')}>HOY</FilterButton>
-          <FilterButton active={filter === '3h'} onClick={() => setFilter('3h')}>3h</FilterButton>
-          <FilterButton active={filter === '1h'} onClick={() => setFilter('1h')}>1h</FilterButton>
-          <FilterButton active={filter === '30m'} onClick={() => setFilter('30m')}>30m</FilterButton>
+          {(['all', '3h', '1h', '30m'] as const).map(f => (
+            <FilterButton key={f} active={filter === f} onClick={() => setFilter(f)}>
+              {f === 'all' ? 'HOY' : f}
+            </FilterButton>
+          ))}
         </div>
       </div>
 
       {/* Leagues List */}
-      <div className="space-y-4">
+      <div className="space-y-2">
         {loading && filteredMatches.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-10 h-10 border-4 border-[#ff6321] border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-zinc-500 dark:text-zinc-400 font-medium">Cargando partidos reales...</p>
+          <div className="flex flex-col items-center justify-center py-16 space-y-3">
+            <div className="w-8 h-8 border-4 border-[#ff6321] border-t-transparent rounded-full animate-spin" />
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">Cargando partidos...</p>
           </div>
         ) : filteredMatches.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-zinc-300 dark:text-zinc-700" />
+          <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+            <AlertCircle className="w-10 h-10 text-zinc-300 dark:text-zinc-700" />
             <div className="space-y-1">
-              <p className="text-xl font-bold">No hay partidos disponibles</p>
-              <p className="text-zinc-500 dark:text-zinc-400">Prueba a recargar o cambia los filtros.</p>
+              <p className="text-lg font-bold">No hay partidos disponibles</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Prueba a recargar o cambia los filtros.</p>
             </div>
-            <button 
+            <button
               onClick={fetchMatches}
-              className="bg-zinc-100 dark:bg-white/5 px-6 py-2 rounded-xl font-bold hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+              className="bg-zinc-100 dark:bg-white/5 px-5 py-2 rounded-xl text-sm font-bold hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
             >
               REINTENTAR
             </button>
@@ -178,49 +185,55 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
           leagues.map(league => {
             const leagueMatches = filteredMatches.filter(m => m.league === league);
             const firstMatch = leagueMatches[0];
-            
+
             return (
-              <div key={league} className="bg-zinc-50 dark:bg-[#111] rounded-2xl border border-zinc-200 dark:border-white/5 overflow-hidden transition-colors duration-300">
-                <div 
+              <div key={league} className="bg-zinc-50 dark:bg-[#111] rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden transition-colors duration-300">
+                <div
                   onClick={() => toggleLeague(league)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
-                    <button 
+                  <div className="flex items-center gap-2.5">
+                    <button
                       onClick={(e) => toggleFavorite(e, league)}
                       className="p-1 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-lg transition-colors"
                     >
-                      <Star className={`w-5 h-5 transition-colors ${favoriteLeagues.includes(league) ? 'text-yellow-500 fill-yellow-500' : 'text-zinc-400 dark:text-zinc-600'}`} />
+                      <Star className={`w-4 h-4 transition-colors ${favoriteLeagues.includes(league) ? 'text-yellow-500 fill-yellow-500' : 'text-zinc-400 dark:text-zinc-600'}`} />
                     </button>
                     {firstMatch?.leagueFlag && (
-                      <img 
-                        src={firstMatch.leagueFlag} 
-                        alt="" 
+                      <img
+                        src={firstMatch.leagueFlag}
+                        alt=""
                         className="w-5 h-3 object-cover rounded-sm"
                         referrerPolicy="no-referrer"
                       />
                     )}
-                    <span className="font-bold text-lg">{league}</span>
+                    <span className="font-bold text-sm">{league}</span>
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-600 font-medium">
+                      {leagueMatches.length} {leagueMatches.length === 1 ? 'partido' : 'partidos'}
+                    </span>
                   </div>
                   <div className="text-zinc-400 dark:text-zinc-600">
-                    {expandedLeagues.includes(league) ? <ChevronUp /> : <ChevronDown />}
+                    {expandedLeagues.includes(league)
+                      ? <ChevronUp className="w-4 h-4" />
+                      : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </div>
 
                 <AnimatePresence>
                   {expandedLeagues.includes(league) && (
-                    <motion.div 
+                    <motion.div
                       initial={{ height: 0 }}
                       animate={{ height: 'auto' }}
                       exit={{ height: 0 }}
+                      transition={{ duration: 0.18 }}
                       className="overflow-hidden border-t border-zinc-200 dark:border-white/5"
                     >
                       <div className="divide-y divide-zinc-200 dark:divide-white/5">
                         {leagueMatches.map(match => (
-                          <MatchRow 
-                            key={match.id} 
-                            match={match} 
-                            onSelect={onAddToSlip} 
+                          <MatchRow
+                            key={match.id}
+                            match={match}
+                            onSelect={onAddToSlip}
                             activeSelection={selections.find(s => s.matchId === match.id)?.selection}
                           />
                         ))}
@@ -239,145 +252,77 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
 
 function FilterButton({ children, active, onClick }: { children: React.ReactNode, active: boolean, onClick: () => void }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
-        active ? 'bg-[#ff6321] text-white' : 'bg-zinc-100 dark:bg-white/5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
-      }`}
+      className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${active
+        ? 'bg-[#ff6321] text-white'
+        : 'bg-zinc-100 dark:bg-white/5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+        }`}
     >
       {children}
     </button>
   );
 }
 
-function MatchRow({ match, onSelect, activeSelection }: { 
-  match: Match, 
+function MatchRow({ match, onSelect, activeSelection }: {
+  match: Match,
   onSelect: (s: Selection) => void,
   activeSelection?: string
 }) {
   const startTime = new Date(match.startTime);
-  const now = new Date();
-  const isLive = startTime <= now;
-
-  // Calculate AI Probabilities based on odds
-  const calculateProbabilities = (odds: { '1': number, 'X': number, '2': number }) => {
-    const rawProb1 = 1 / odds['1'];
-    const rawProbX = 1 / odds['X'];
-    const rawProb2 = 1 / odds['2'];
-    const total = rawProb1 + rawProbX + rawProb2;
-    
-    return {
-      '1': Math.round((rawProb1 / total) * 100),
-      'X': Math.round((rawProbX / total) * 100),
-      '2': Math.round((rawProb2 / total) * 100)
-    };
-  };
-
-  const probs = calculateProbabilities(match.odds);
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-        <div className="flex items-center gap-2">
-          <Clock className="w-3 h-3" />
+    <div className="px-3 py-2.5 space-y-2">
+      {/* Time */}
+      <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+        <Clock className="w-3 h-3" />
+        <span className="font-mono">
           {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
+
+      {/* Teams */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          {match.homeLogo && (
+            <img
+              src={match.homeLogo}
+              alt=""
+              className="w-5 h-5 object-contain shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          )}
+          <span className="text-sm font-bold truncate">{match.homeTeam}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-zinc-200 dark:bg-white/5 px-2 py-0.5 rounded text-zinc-500 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            ANÁLISIS IA
-          </span>
-          {isLive && <span className="text-red-500 animate-pulse">● EN VIVO</span>}
+        <span className="text-xs text-zinc-400 dark:text-zinc-600 shrink-0 font-medium">vs</span>
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+          <span className="text-sm font-bold truncate text-right">{match.awayTeam}</span>
+          {match.awayLogo && (
+            <img
+              src={match.awayLogo}
+              alt=""
+              className="w-5 h-5 object-contain shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center gap-4">
-        <div className="flex-1 w-full grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          {/* Labels Row */}
-          <div className="text-center space-y-1">
-            <div className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">1</div>
-            <div className="text-[10px] font-black text-[#ff6321]">{probs['1']}%</div>
-          </div>
-          <div className="text-center space-y-1 min-w-[60px]">
-            <div className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">X</div>
-            <div className="text-[10px] font-black text-[#ff6321]">{probs['X']}%</div>
-          </div>
-          <div className="text-center space-y-1">
-            <div className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">2</div>
-            <div className="text-[10px] font-black text-[#ff6321]">{probs['2']}%</div>
-          </div>
-
-          {/* Home Team Button */}
-          <button 
-            onClick={() => onSelect({ ...match, matchId: match.id, selection: '1', odds: match.odds['1'] })}
-            className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all gap-2 group h-full ${
-              activeSelection === '1'
-                ? 'bg-[#ff6321] border-[#ff6321] text-white shadow-lg shadow-[#ff6321]/20'
-                : 'bg-zinc-100 dark:bg-white/5 border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white'
-            }`}
+      {/* Selection buttons */}
+      <div className="grid grid-cols-3 gap-1.5">
+        {(['1', 'X', '2'] as const).map((sel) => (
+          <button
+            key={sel}
+            onClick={() => onSelect({ ...match, matchId: match.id, selection: sel, odds: 1 })}
+            className={`py-2 rounded-lg text-sm font-black transition-all ${activeSelection === sel
+              ? 'bg-[#ff6321] text-white shadow-md shadow-[#ff6321]/20'
+              : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white'
+              }`}
           >
-            {match.homeLogo && (
-              <img 
-                src={match.homeLogo} 
-                alt="" 
-                className="w-10 h-10 object-contain group-hover:scale-110 transition-transform"
-                referrerPolicy="no-referrer"
-              />
-            )}
-            <span className="font-black text-sm text-center line-clamp-2">{match.homeTeam}</span>
-            <span className={`text-xs font-mono font-bold ${activeSelection === '1' ? 'text-white' : 'text-[#ff6321]'}`}>{match.odds['1'].toFixed(2)}</span>
+            {sel}
           </button>
-
-          {/* Draw Button */}
-          <button 
-            onClick={() => onSelect({ ...match, matchId: match.id, selection: 'X', odds: match.odds['X'] })}
-            className={`flex flex-col items-center justify-center px-4 py-8 rounded-2xl border transition-all gap-2 min-w-[60px] h-full ${
-              activeSelection === 'X'
-                ? 'bg-[#ff6321] border-[#ff6321] text-white shadow-lg shadow-[#ff6321]/20'
-                : 'bg-zinc-100 dark:bg-white/5 border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-500 hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <span className="font-black text-xl">X</span>
-            <span className={`text-xs font-mono font-bold ${activeSelection === 'X' ? 'text-white' : 'text-[#ff6321]'}`}>{match.odds['X'].toFixed(2)}</span>
-          </button>
-
-          {/* Away Team Button */}
-          <button 
-            onClick={() => onSelect({ ...match, matchId: match.id, selection: '2', odds: match.odds['2'] })}
-            className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all gap-2 group h-full ${
-              activeSelection === '2'
-                ? 'bg-[#ff6321] border-[#ff6321] text-white shadow-lg shadow-[#ff6321]/20'
-                : 'bg-zinc-100 dark:bg-white/5 border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            {match.awayLogo && (
-              <img 
-                src={match.awayLogo} 
-                alt="" 
-                className="w-10 h-10 object-contain group-hover:scale-110 transition-transform"
-                referrerPolicy="no-referrer"
-              />
-            )}
-            <span className="font-black text-sm text-center line-clamp-2">{match.awayTeam}</span>
-            <span className={`text-xs font-mono font-bold ${activeSelection === '2' ? 'text-white' : 'text-[#ff6321]'}`}>{match.odds['2'].toFixed(2)}</span>
-          </button>
-        </div>
+        ))}
       </div>
     </div>
-  );
-}
-
-function SelectionButton({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`transition-all p-3 rounded-xl border font-black text-lg ${
-        active 
-          ? 'bg-[#ff6321] border-[#ff6321] text-white shadow-lg shadow-[#ff6321]/20' 
-          : 'bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-white'
-      }`}
-    >
-      {label}
-    </button>
   );
 }
