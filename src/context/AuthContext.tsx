@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider: '',
         apiKey: '',
         selectedLeagueIds: DEFAULT_LEAGUE_IDS,
+        customLeagues: [],
         favorites: [],
         stats: {
           totalBets: 0,

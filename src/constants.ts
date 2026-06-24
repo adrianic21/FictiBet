@@ -7,17 +7,29 @@ export interface SupportedLeague {
 }
 
 export const SUPPORTED_LEAGUES: SupportedLeague[] = [
-  { id: 2, name: 'Champions League', country: 'Internacional' },
-  { id: 3, name: 'Europa League', country: 'Internacional' },
-  { id: 848, name: 'Conference League', country: 'Internacional' },
-  { id: 6, name: 'Copa Africana de Naciones', country: 'Internacional' },
+  // --- Competiciones Internacionales ---
+  { id: 1, name: 'Copa Mundial de la FIFA', country: 'Internacional' },
+  { id: 2, name: 'UEFA Champions League', country: 'Internacional' },
+  { id: 3, name: 'UEFA Europa League', country: 'Internacional' },
+  { id: 4, name: 'Eurocopa', country: 'Internacional' },
+  { id: 9, name: 'Copa América', country: 'Internacional' },
   { id: 11, name: 'Copa Sudamericana', country: 'Internacional' },
   { id: 13, name: 'Copa Libertadores', country: 'Internacional' },
+  { id: 848, name: 'UEFA Conference League', country: 'Internacional' },
+  { id: 6, name: 'Copa Africana de Naciones', country: 'Internacional' },
   { id: 17, name: 'AFC Champions League', country: 'Internacional' },
   { id: 525, name: 'Champions League Femenina', country: 'Internacional' },
   { id: 1129, name: 'Clasificación Copa Asiática', country: 'Internacional' },
-  { id: 71, name: 'Serie A', country: 'Brasil' },
-  { id: 274, name: 'Liga MX', country: 'México' },
+  // --- Ligas Top ---
+  { id: 39, name: 'Premier League', country: 'Inglaterra' },
+  { id: 140, name: 'La Liga', country: 'España' },
+  { id: 135, name: 'Serie A', country: 'Italia' },
+  { id: 78, name: 'Bundesliga', country: 'Alemania' },
+  { id: 61, name: 'Ligue 1', country: 'Francia' },
+  { id: 71, name: 'Serie A (Brasileirão)', country: 'Brasil' },
+  { id: 128, name: 'Primera División', country: 'Argentina' },
+  { id: 262, name: 'Liga MX', country: 'México' },
+  // --- Otras ligas ---
   { id: 435, name: 'Primera División', country: 'Uruguay' },
   { id: 436, name: 'Primera División', country: 'Paraguay' },
   { id: 90, name: 'Eredivisie', country: 'Países Bajos' },

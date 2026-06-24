@@ -57,6 +57,7 @@ export interface UserProfile {
   provider: string;
   apiKey: string;
   selectedLeagueIds?: number[];
+  customLeagues?: { id: number; name: string; country: string }[];
   favorites: string[];
   stats: UserStats;
   achievements: string[];

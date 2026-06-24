@@ -27,7 +27,8 @@ import {
   ExternalLink,
   Info,
   Globe,
-  Search
+  Search,
+  Plus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -54,12 +55,20 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
     teamMostWins: 'N/A',
     teamMostLosses: 'N/A'
   });
+  const [customLeagues, setCustomLeagues] = useState<{ id: number; name: string; country: string }[]>(
+    () => user?.customLeagues || []
+  );
+  const [newLeagueName, setNewLeagueName] = useState('');
+  const [newLeagueCountry, setNewLeagueCountry] = useState('');
+  const [newLeagueId, setNewLeagueId] = useState('');
+  const [addLeagueError, setAddLeagueError] = useState('');
 
   useEffect(() => {
     if (user) {
       setSelectedLeagueIds(getEffectiveLeagueIds(user.selectedLeagueIds));
+      setCustomLeagues(user.customLeagues || []);
     }
-  }, [user?.selectedLeagueIds]);
+  }, [user?.selectedLeagueIds, user?.customLeagues]);
 
   useEffect(() => {
     const fetchAnalyticalStats = async () => {
@@ -147,7 +156,8 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
     setIsSavingLeagues(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
-        selectedLeagueIds
+        selectedLeagueIds,
+        customLeagues
       });
       alert('Competiciones guardadas correctamente');
     } catch (error) {
@@ -166,12 +176,14 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
     );
   };
 
-  const filteredLeagues = SUPPORTED_LEAGUES.filter(league => {
-    const query = leagueSearch.toLowerCase();
+  const allLeagues = [...SUPPORTED_LEAGUES, ...customLeagues];
+
+  const filteredLeagues = allLeagues.filter(league => {
+    const q = leagueSearch.toLowerCase();
     return (
-      league.name.toLowerCase().includes(query) ||
-      league.country.toLowerCase().includes(query) ||
-      league.id.toString().includes(query)
+      league.name.toLowerCase().includes(q) ||
+      league.country.toLowerCase().includes(q) ||
+      league.id.toString().includes(q)
     );
   });
 
@@ -180,6 +192,38 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
     acc[league.country].push(league);
     return acc;
   }, {});
+
+  const handleAddCustomLeague = () => {
+    setAddLeagueError('');
+    const id = parseInt(newLeagueId, 10);
+    if (!newLeagueName.trim()) {
+      setAddLeagueError('Introduce el nombre de la competición');
+      return;
+    }
+    if (!newLeagueCountry.trim()) {
+      setAddLeagueError('Introduce el país');
+      return;
+    }
+    if (isNaN(id) || id <= 0) {
+      setAddLeagueError('Introduce un ID (v3) válido (número positivo)');
+      return;
+    }
+    if (allLeagues.some(l => l.id === id)) {
+      setAddLeagueError(`Ya existe una competición con ID ${id}`);
+      return;
+    }
+    const newLeague = { id, name: newLeagueName.trim(), country: newLeagueCountry.trim() };
+    setCustomLeagues(prev => [...prev, newLeague]);
+    setSelectedLeagueIds(prev => [...prev, id]);
+    setNewLeagueName('');
+    setNewLeagueCountry('');
+    setNewLeagueId('');
+  };
+
+  const handleRemoveCustomLeague = (leagueId: number) => {
+    setCustomLeagues(prev => prev.filter(l => l.id !== leagueId));
+    setSelectedLeagueIds(prev => prev.filter(id => id !== leagueId));
+  };
 
   const handleSaveApi = async () => {
     if (!user) return;
@@ -521,14 +565,14 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
               <div>
                 <h4 className="font-bold text-sm">Competiciones a cargar</h4>
                 <p className="text-xs text-zinc-500">
-                  {selectedLeagueIds.length} de {SUPPORTED_LEAGUES.length} seleccionadas
+                  {selectedLeagueIds.length} de {allLeagues.length} seleccionadas
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setSelectedLeagueIds(SUPPORTED_LEAGUES.map(l => l.id))}
+                onClick={() => setSelectedLeagueIds(allLeagues.map(l => l.id))}
                 className="px-3 py-1.5 text-xs font-bold bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-lg transition-colors"
               >
                 TODAS
@@ -589,6 +633,83 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
             {filteredLeagues.length === 0 && (
               <p className="text-sm text-zinc-500 text-center py-4">No se encontraron competiciones.</p>
             )}
+          </div>
+
+          {/* Custom leagues list */}
+          {customLeagues.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Tus competiciones añadidas</p>
+              <div className="flex flex-wrap gap-2">
+                {customLeagues.map(league => (
+                  <div key={league.id} className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+                    <span className="text-xs font-bold">{league.name}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">ID {league.id}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCustomLeague(league.id)}
+                      className="text-red-400 hover:text-red-500 transition-colors ml-1"
+                      title="Eliminar competición"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add custom league form */}
+          <div className="p-4 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-3">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <Plus className="w-4 h-4" />
+              <h4 className="font-bold text-sm">Añadir nueva competición</h4>
+            </div>
+            <p className="text-xs text-zinc-500">
+              Puedes añadir cualquier competición de API-Football usando su ID (v3). Consulta los IDs en <a href="https://www.api-football.com/documentation-v3#tag/Leagues" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-600 dark:text-emerald-400 underline underline-offset-2 inline-flex items-center gap-1">la documentación <ExternalLink className="w-3 h-3" /></a>
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase">Nombre</label>
+                <input
+                  type="text"
+                  value={newLeagueName}
+                  onChange={(e) => setNewLeagueName(e.target.value)}
+                  placeholder="Ej: MLS"
+                  className="w-full bg-white dark:bg-black/50 border border-zinc-200 dark:border-white/10 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-emerald-500 dark:text-white transition-colors"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase">País</label>
+                <input
+                  type="text"
+                  value={newLeagueCountry}
+                  onChange={(e) => setNewLeagueCountry(e.target.value)}
+                  placeholder="Ej: Estados Unidos"
+                  className="w-full bg-white dark:bg-black/50 border border-zinc-200 dark:border-white/10 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-emerald-500 dark:text-white transition-colors"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase">ID (v3)</label>
+                <input
+                  type="number"
+                  value={newLeagueId}
+                  onChange={(e) => setNewLeagueId(e.target.value)}
+                  placeholder="Ej: 253"
+                  className="w-full bg-white dark:bg-black/50 border border-zinc-200 dark:border-white/10 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-emerald-500 dark:text-white transition-colors"
+                />
+              </div>
+            </div>
+            {addLeagueError && (
+              <p className="text-xs font-bold text-red-500">{addLeagueError}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleAddCustomLeague}
+              className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition-all text-xs flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              AÑADIR COMPETICIÓN
+            </button>
           </div>
 
           <button
