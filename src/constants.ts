@@ -1,5 +1,59 @@
 import { Achievement } from './types';
 
+export interface SupportedLeague {
+  id: number;
+  name: string;
+  country: string;
+}
+
+export const SUPPORTED_LEAGUES: SupportedLeague[] = [
+  { id: 2, name: 'Champions League', country: 'Internacional' },
+  { id: 3, name: 'Europa League', country: 'Internacional' },
+  { id: 848, name: 'Conference League', country: 'Internacional' },
+  { id: 6, name: 'Copa Africana de Naciones', country: 'Internacional' },
+  { id: 11, name: 'Copa Sudamericana', country: 'Internacional' },
+  { id: 13, name: 'Copa Libertadores', country: 'Internacional' },
+  { id: 17, name: 'AFC Champions League', country: 'Internacional' },
+  { id: 525, name: 'Champions League Femenina', country: 'Internacional' },
+  { id: 1129, name: 'Clasificación Copa Asiática', country: 'Internacional' },
+  { id: 71, name: 'Serie A', country: 'Brasil' },
+  { id: 274, name: 'Liga MX', country: 'México' },
+  { id: 435, name: 'Primera División', country: 'Uruguay' },
+  { id: 436, name: 'Primera División', country: 'Paraguay' },
+  { id: 90, name: 'Eredivisie', country: 'Países Bajos' },
+  { id: 205, name: '2. Bundesliga', country: 'Alemania' },
+  { id: 144, name: 'Jupiler Pro League', country: 'Bélgica' },
+  { id: 218, name: 'Bundesliga', country: 'Austria' },
+  { id: 278, name: 'Premier League', country: 'Bielorrusia' },
+  { id: 141, name: 'Segunda División', country: 'España' },
+  { id: 143, name: 'Copa del Rey', country: 'España' },
+  { id: 96, name: 'Taça de Portugal', country: 'Portugal' },
+  { id: 103, name: 'Eliteserien', country: 'Noruega' },
+  { id: 106, name: 'Ekstraklasa', country: 'Polonia' },
+  { id: 179, name: 'Premiership', country: 'Escocia' },
+  { id: 113, name: 'Allsvenskan', country: 'Suecia' },
+  { id: 119, name: 'Superliga', country: 'Dinamarca' },
+  { id: 172, name: 'Veikkausliiga', country: 'Finlandia' },
+  { id: 197, name: 'Super League 1', country: 'Grecia' },
+  { id: 210, name: 'HNL', country: 'Croacia' },
+  { id: 207, name: 'Super League', country: 'Suiza' },
+  { id: 318, name: '1. Division', country: 'Chipre' },
+  { id: 327, name: 'Erovnuli Liga', country: 'Georgia' },
+  { id: 199, name: 'Süper Lig', country: 'Turquía' },
+  { id: 203, name: '1. Lig', country: 'Turquía' },
+  { id: 206, name: 'Copa de Turquía', country: 'Turquía' },
+  { id: 233, name: 'Premier League', country: 'Egipto' },
+  { id: 290, name: 'Pro League', country: 'Irán' },
+  { id: 286, name: 'Super League', country: 'China' },
+];
+
+export const DEFAULT_LEAGUE_IDS = SUPPORTED_LEAGUES.map((league) => league.id);
+
+export function getEffectiveLeagueIds(selected?: number[]): number[] {
+  if (selected && selected.length > 0) return selected;
+  return DEFAULT_LEAGUE_IDS;
+}
+
 export const ACHIEVEMENTS: Achievement[] = [
   // --- ACIERTOS TOTALES (28) ---
   { id: 'hits_1', name: 'Primer Acierto', description: 'Gana tu primera combinada.', points: 1, icon: 'Target' },

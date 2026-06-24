@@ -4,7 +4,7 @@ import { auth, db } from '../firebase';
 import { deleteUser } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Bet, Selection } from '../types';
-import { ACHIEVEMENTS } from '../constants';
+import { ACHIEVEMENTS, SUPPORTED_LEAGUES, getEffectiveLeagueIds } from '../constants';
 import * as Icons from 'lucide-react';
 import {
   Settings,
@@ -25,7 +25,9 @@ import {
   Award,
   XCircle,
   ExternalLink,
-  Info
+  Info,
+  Globe,
+  Search
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -34,7 +36,12 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
   const [username, setUsername] = useState(user?.username || '');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [apiKey, setApiKey] = useState(user?.apiKey || '');
+  const [selectedLeagueIds, setSelectedLeagueIds] = useState<number[]>(
+    () => getEffectiveLeagueIds(user?.selectedLeagueIds)
+  );
+  const [leagueSearch, setLeagueSearch] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingLeagues, setIsSavingLeagues] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -47,6 +54,12 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
     teamMostWins: 'N/A',
     teamMostLosses: 'N/A'
   });
+
+  useEffect(() => {
+    if (user) {
+      setSelectedLeagueIds(getEffectiveLeagueIds(user.selectedLeagueIds));
+    }
+  }, [user?.selectedLeagueIds]);
 
   useEffect(() => {
     const fetchAnalyticalStats = async () => {
@@ -124,6 +137,49 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
       setIsSavingProfile(false);
     }
   };
+
+  const handleSaveLeagues = async () => {
+    if (!user) return;
+    if (selectedLeagueIds.length === 0) {
+      alert('Selecciona al menos una competición');
+      return;
+    }
+    setIsSavingLeagues(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        selectedLeagueIds
+      });
+      alert('Competiciones guardadas correctamente');
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar las competiciones');
+    } finally {
+      setIsSavingLeagues(false);
+    }
+  };
+
+  const toggleLeague = (leagueId: number) => {
+    setSelectedLeagueIds(prev =>
+      prev.includes(leagueId)
+        ? prev.filter(id => id !== leagueId)
+        : [...prev, leagueId]
+    );
+  };
+
+  const filteredLeagues = SUPPORTED_LEAGUES.filter(league => {
+    const query = leagueSearch.toLowerCase();
+    return (
+      league.name.toLowerCase().includes(query) ||
+      league.country.toLowerCase().includes(query) ||
+      league.id.toString().includes(query)
+    );
+  });
+
+  const leaguesByCountry = filteredLeagues.reduce<Record<string, typeof SUPPORTED_LEAGUES>>((acc, league) => {
+    if (!acc[league.country]) acc[league.country] = [];
+    acc[league.country].push(league);
+    return acc;
+  }, {});
 
   const handleSaveApi = async () => {
     if (!user) return;
@@ -457,6 +513,92 @@ export default function Profile({ setView }: { setView: (v: string) => void }) {
         >
           {isSaving ? 'GUARDANDO...' : 'GUARDAR API KEY'}
         </button>
+
+        <div className="pt-5 border-t border-zinc-200 dark:border-white/5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-[#ff6321]" />
+              <div>
+                <h4 className="font-bold text-sm">Competiciones a cargar</h4>
+                <p className="text-xs text-zinc-500">
+                  {selectedLeagueIds.length} de {SUPPORTED_LEAGUES.length} seleccionadas
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedLeagueIds(SUPPORTED_LEAGUES.map(l => l.id))}
+                className="px-3 py-1.5 text-xs font-bold bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-lg transition-colors"
+              >
+                TODAS
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedLeagueIds([])}
+                className="px-3 py-1.5 text-xs font-bold bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-lg transition-colors"
+              >
+                NINGUNA
+              </button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              value={leagueSearch}
+              onChange={(e) => setLeagueSearch(e.target.value)}
+              placeholder="Buscar por nombre, país o ID..."
+              className="w-full bg-white dark:bg-black/50 border border-zinc-200 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#ff6321] dark:text-white transition-colors"
+            />
+          </div>
+
+          <div className="max-h-72 overflow-y-auto space-y-4 pr-1">
+            {Object.entries(leaguesByCountry).map(([country, leagues]) => (
+              <div key={country} className="space-y-2">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{country}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {leagues.map(league => {
+                    const isSelected = selectedLeagueIds.includes(league.id);
+                    return (
+                      <label
+                        key={league.id}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'bg-[#ff6321]/10 border-[#ff6321]/30'
+                            : 'bg-white dark:bg-black/30 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleLeague(league.id)}
+                          className="accent-[#ff6321] w-4 h-4 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold truncate">{league.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono">ID {league.id}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {filteredLeagues.length === 0 && (
+              <p className="text-sm text-zinc-500 text-center py-4">No se encontraron competiciones.</p>
+            )}
+          </div>
+
+          <button
+            onClick={handleSaveLeagues}
+            disabled={isSavingLeagues}
+            className="px-8 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-black hover:opacity-90 font-bold rounded-xl transition-all disabled:opacity-50 text-sm"
+          >
+            {isSavingLeagues ? 'GUARDANDO...' : 'GUARDAR COMPETICIONES'}
+          </button>
+        </div>
       </div>
 
       {/* Danger Zone */}

@@ -12,6 +12,7 @@ import {
 import { Match, Selection } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProvider } from '../services/api';
+import { getEffectiveLeagueIds } from '../constants';
 
 export default function Dashboard({ onAddToSlip, setView, selections }: {
   onAddToSlip: (selection: Selection) => void,
@@ -45,9 +46,11 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
 
   const fetchMatches = useCallback(async () => {
     if (!user?.apiKey) return;
+    const leagueIds = getEffectiveLeagueIds(user.selectedLeagueIds);
+    if (leagueIds.length === 0) return;
     setLoading(true);
     try {
-      const provider = getProvider('API-Football', user.apiKey);
+      const provider = getProvider('API-Football', user.apiKey, leagueIds);
       const realMatches = await provider.getMatches();
       setMatches(realMatches);
     } catch (error) {
@@ -55,7 +58,7 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
     } finally {
       setLoading(false);
     }
-  }, [user?.apiKey]);
+  }, [user?.apiKey, user?.selectedLeagueIds]);
 
   useEffect(() => {
     fetchMatches();
@@ -124,6 +127,29 @@ export default function Dashboard({ onAddToSlip, setView, selections }: {
           className="bg-[#ff6321] px-8 py-3 rounded-xl font-bold hover:bg-[#e55a1e] text-white transition-colors"
         >
           IR A PERFIL
+        </button>
+      </div>
+    );
+  }
+
+  const activeLeagueIds = getEffectiveLeagueIds(user.selectedLeagueIds);
+  if (activeLeagueIds.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+        <div className="bg-zinc-100 dark:bg-white/5 p-6 rounded-full">
+          <AlertCircle className="w-12 h-12 text-[#ff6321]" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">Sin competiciones seleccionadas</h2>
+          <p className="text-zinc-500 dark:text-zinc-400 max-w-sm">
+            Elige al menos una competición en tu perfil para cargar partidos desde API-Football.
+          </p>
+        </div>
+        <button
+          onClick={() => setView('profile')}
+          className="bg-[#ff6321] px-8 py-3 rounded-xl font-bold hover:bg-[#e55a1e] text-white transition-colors"
+        >
+          CONFIGURAR COMPETICIONES
         </button>
       </div>
     );

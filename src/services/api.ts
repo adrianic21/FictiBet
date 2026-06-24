@@ -1,17 +1,16 @@
 import { Match } from '../types';
+import { DEFAULT_LEAGUE_IDS } from '../constants';
 
 export interface FootballProvider {
   getMatches(): Promise<Match[]>;
   getResults(matchIds: string[]): Promise<Record<string, string>>;
 }
 
-const ALLOWED_LEAGUES = [
-  218, 144, 172, 210, 318, 119, 233, 327, 197, 274, 290, 103, 106, 179, 143, 435, 436, 141, 113, 207, 203, 17, 6, 205, 1129, 199, 90, 278, 286, 96, 206, 525,
-  2, 3, 848, 13, 11, 71
-];
-
 export class ApiFootballProvider implements FootballProvider {
-  constructor(private apiKey: string) {}
+  constructor(
+    private apiKey: string,
+    private allowedLeagueIds: number[] = DEFAULT_LEAGUE_IDS
+  ) {}
 
   async getMatches(): Promise<Match[]> {
     try {
@@ -32,8 +31,9 @@ export class ApiFootballProvider implements FootballProvider {
       const fixturesData = await fixturesResponse.json();
       if (!fixturesData.response) return [];
 
+      const allowedSet = new Set(this.allowedLeagueIds);
       const filteredFixtures = fixturesData.response.filter((item: any) =>
-        ALLOWED_LEAGUES.includes(item.league.id)
+        allowedSet.has(item.league.id)
       );
 
       if (filteredFixtures.length === 0) return [];
@@ -63,6 +63,6 @@ export class ApiFootballProvider implements FootballProvider {
 
 export const PROVIDERS = ['API-Football'];
 
-export function getProvider(_name: string, apiKey: string): FootballProvider {
-  return new ApiFootballProvider(apiKey);
+export function getProvider(_name: string, apiKey: string, allowedLeagueIds?: number[]): FootballProvider {
+  return new ApiFootballProvider(apiKey, allowedLeagueIds);
 }

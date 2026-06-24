@@ -56,6 +56,7 @@ export interface UserProfile {
   level: number;
   provider: string;
   apiKey: string;
+  selectedLeagueIds?: number[];
   favorites: string[];
   stats: UserStats;
   achievements: string[];

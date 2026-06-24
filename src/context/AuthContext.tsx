@@ -3,6 +3,7 @@ import { auth, db } from '../firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { UserProfile } from '../types';
+import { DEFAULT_LEAGUE_IDS } from '../constants';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         level: 1,
         provider: '',
         apiKey: '',
+        selectedLeagueIds: DEFAULT_LEAGUE_IDS,
         favorites: [],
         stats: {
           totalBets: 0,
